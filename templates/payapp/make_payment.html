@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Send Money - PayApp{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Send Money</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <p class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Your current balance: 
+                        <strong>
+                            {% if user.profile.currency == 'GBP' %}£{% elif user.profile.currency == 'USD' %}${% else %}€{% endif %}
+                            {{ user.profile.balance }}
+                        </strong>
+                    </p>
+                </div>
+                
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary">Send Payment</button>
+                        <a href="{% url 'dashboard' %}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer bg-light">
+                <div class="small text-muted">
+                    <i class="fas fa-shield-alt me-1"></i>
+                    All transactions are secure and processed immediately.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

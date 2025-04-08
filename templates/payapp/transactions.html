@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}Transaction History - PayApp{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h2>
+            <i class="fas fa-exchange-alt me-2"></i>Transaction History
+        </h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">All Transactions</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Type</th>
+                                <th>With</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in transactions %}
+                                <tr>
+                                    <td>{{ transaction.timestamp|date:"M d, Y H:i" }}</td>
+                                    <td>
+                                        {% if transaction.transaction_type == 'PAYMENT' %}
+                                            <span class="badge bg-success">Payment</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Request</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.sender == user %}
+                                            <i class="fas fa-arrow-right text-danger me-1"></i>
+                                            {{ transaction.receiver.email }}
+                                        {% else %}
+                                            <i class="fas fa-arrow-left text-success me-1"></i>
+                                            {{ transaction.sender.email }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.description %}
+                                            {{ transaction.description }}
+                                        {% else %}
+                                            <span class="text-muted">No description</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.sender == user %}
+                                            <span class="text-danger">
+                                                -{{ transaction.amount_sender_currency }} {{ transaction.sender_currency }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-success">
+                                                +{{ transaction.amount_receiver_currency }} {{ transaction.receiver_currency }}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.status == 'COMPLETED' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif transaction.status == 'PENDING' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                            {% if transaction.sender == user %}
+                                                <a href="{% url 'respond_request' transaction.id %}" class="btn btn-sm btn-outline-primary ms-1">
+                                                    Respond
+                                                </a>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No transactions found.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

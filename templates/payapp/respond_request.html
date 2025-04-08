@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Respond to Request - PayApp{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h4 class="mb-0">Respond to Payment Request</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info mb-4">
+                    <h5>Request Details</h5>
+                    <hr>
+                    <p><strong>From:</strong> {{ payment_request.receiver.email }}</p>
+                    <p><strong>Amount:</strong> {{ payment_request.amount_sender_currency }} {{ payment_request.sender_currency }}</p>
+                    <p><strong>Your Current Balance:</strong> {{ user.profile.balance }} {{ user.profile.currency }}</p>
+                    {% if payment_request.description %}
+                        <p><strong>Description:</strong> {{ payment_request.description }}</p>
+                    {% endif %}
+                    <p><strong>Requested on:</strong> {{ payment_request.timestamp|date:"F d, Y H:i" }}</p>
+                </div>
+                
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary">Submit Response</button>
+                        <a href="{% url 'notifications' %}" class="btn btn-secondary">Back to Notifications</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
