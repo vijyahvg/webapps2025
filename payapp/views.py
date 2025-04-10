@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.http import JsonResponse, HttpResponseForbidden
-from django.db import transaction
+from django.db import transaction as db_transaction
 from django.conf import settings
 from django.contrib import messages
 from rest_framework.decorators import api_view
@@ -39,8 +39,10 @@ def dashboard_view(request):
 
     # Get user's profile and transaction counts
     profile = request.user.profile
+
+    # Get pending payment requests where the user is the sender (ones they need to respond to)
     pending_requests = Transaction.objects.filter(
-        receiver=request.user,
+        sender=request.user,
         transaction_type='REQUEST',
         status='PENDING'
     ).count()
@@ -53,6 +55,7 @@ def dashboard_view(request):
     context = {
         'profile': profile,
         'pending_requests': pending_requests,
+        'notification_count': pending_requests,  # Add this for notification badge
         'recent_transactions': recent_transactions
     }
 
@@ -75,7 +78,18 @@ def transaction_list_view(request):
         reverse=True
     )
 
-    return render(request, 'payapp/transactions.html', {'transactions': all_transactions})
+    # Calculate notification count
+    notification_count = Transaction.objects.filter(
+        sender=request.user,
+        transaction_type='REQUEST',
+        status='PENDING'
+    ).count()
+
+    # Return the rendered template with transaction and notification data
+    return render(request, 'payapp/transactions.html', {
+        'transactions': all_transactions,
+        'notification_count': notification_count  # Add this line
+    })
 
 
 @login_required
@@ -90,7 +104,16 @@ def admin_transaction_list_view(request):
     # Get all transactions
     all_transactions = Transaction.objects.all().order_by('-timestamp')
 
-    return render(request, 'payapp/admin_transactions.html', {'transactions': all_transactions})
+    # Add this to each view before the render statement
+    notification_count = Transaction.objects.filter(
+        sender=request.user,
+        transaction_type='REQUEST',
+        status='PENDING'
+    ).count()
+
+    return render(request, 'payapp/admin_transactions.html',
+                  {'transactions': all_transactions, 'notification_count': notification_count
+                   })
 
 
 @login_required
@@ -100,12 +123,20 @@ def notification_view(request):
     """
     # Get pending payment requests for the current user
     pending_requests = Transaction.objects.filter(
-        receiver=request.user,
+        sender=request.user,
         transaction_type='REQUEST',
         status='PENDING'
     ).order_by('-timestamp')
 
-    return render(request, 'payapp/notifications.html', {'pending_requests': pending_requests})
+    # Add this to each view before the render statement
+    notification_count = Transaction.objects.filter(
+        sender=request.user,
+        transaction_type='REQUEST',
+        status='PENDING'
+    ).count()
+
+    return render(request, 'payapp/notifications.html',
+                  {'pending_requests': pending_requests, 'notification_count': notification_count})
 
 
 @login_required
@@ -113,6 +144,13 @@ def make_payment_view(request):
     """
     View for making a direct payment to another user
     """
+    # Calculate notification count at the beginning of the function
+    notification_count = Transaction.objects.filter(
+        sender=request.user,
+        transaction_type='REQUEST',
+        status='PENDING'
+    ).count()
+
     if request.method == 'POST':
         form = PaymentForm(request.POST, user=request.user)
         if form.is_valid():
@@ -148,37 +186,44 @@ def make_payment_view(request):
                 timestamp = datetime.datetime.now()
 
             # Create transaction with atomic operation
-            with transaction.atomic():
-                # Update sender's balance
-                request.user.profile.balance -= amount
-                request.user.profile.save()
+            try:
+                with db_transaction.atomic():
+                    # Update sender's balance
+                    request.user.profile.balance -= amount
+                    request.user.profile.save()
 
-                # Update recipient's balance
-                recipient.profile.balance += amount_receiver_currency
-                recipient.profile.save()
+                    # Update recipient's balance
+                    recipient.profile.balance += amount_receiver_currency
+                    recipient.profile.save()
 
-                # Create transaction record
-                transaction = Transaction.objects.create(
-                    sender=request.user,
-                    receiver=recipient,
-                    amount=amount,
-                    amount_sender_currency=amount,
-                    amount_receiver_currency=amount_receiver_currency,
-                    sender_currency=sender_currency,
-                    receiver_currency=receiver_currency,
-                    transaction_type='PAYMENT',
-                    status='COMPLETED',
-                    timestamp=timestamp,
-                    description=description
-                )
+                    # Create transaction record
+                    transaction_obj = Transaction.objects.create(
+                        sender=request.user,
+                        receiver=recipient,
+                        amount=amount,
+                        amount_sender_currency=amount,
+                        amount_receiver_currency=amount_receiver_currency,
+                        sender_currency=sender_currency,
+                        receiver_currency=receiver_currency,
+                        transaction_type='PAYMENT',
+                        status='COMPLETED',
+                        timestamp=timestamp,
+                        description=description
+                    )
 
-                messages.success(request,
-                                 f"Payment of {amount} {sender_currency} sent successfully to {recipient.email}")
-                return redirect('dashboard')
+                    messages.success(request,
+                                     f"Payment of {amount} {sender_currency} sent successfully to {recipient.email}")
+                    return redirect('dashboard')
+            except Exception as e:
+                messages.error(request, f"Error processing payment: {str(e)}")
+                return redirect('make_payment')
     else:
         form = PaymentForm(user=request.user)
 
-    return render(request, 'payapp/make_payment.html', {'form': form})
+    return render(request, 'payapp/make_payment.html', {
+        'form': form,
+        'notification_count': notification_count  # Add this line
+    })
 
 
 @login_required
@@ -186,6 +231,13 @@ def request_payment_view(request):
     """
     View for requesting payment from another user
     """
+    # Calculate notification count at the beginning of the function
+    notification_count = Transaction.objects.filter(
+        sender=request.user,
+        transaction_type='REQUEST',
+        status='PENDING'
+    ).count()
+
     if request.method == 'POST':
         form = RequestPaymentForm(request.POST, user=request.user)
         if form.is_valid():
@@ -215,26 +267,31 @@ def request_payment_view(request):
                 timestamp = datetime.datetime.now()
 
             # Create payment request
-            transaction = Transaction.objects.create(
-                sender=sender,
-                receiver=request.user,
-                amount=amount,
-                amount_sender_currency=amount_sender_currency,
-                amount_receiver_currency=amount,
-                sender_currency=sender_currency,
-                receiver_currency=receiver_currency,
-                transaction_type='REQUEST',
-                status='PENDING',
-                timestamp=timestamp,
-                description=description
-            )
+            try:
+                transaction_obj = Transaction.objects.create(
+                    sender=sender,
+                    receiver=request.user,
+                    amount=amount,
+                    amount_sender_currency=amount_sender_currency,
+                    amount_receiver_currency=amount,
+                    sender_currency=sender_currency,
+                    receiver_currency=receiver_currency,
+                    transaction_type='REQUEST',
+                    status='PENDING',
+                    timestamp=timestamp,
+                    description=description
+                )
 
-            messages.success(request, f"Payment request of {amount} {receiver_currency} sent to {sender.email}")
-            return redirect('dashboard')
+                messages.success(request, f"Payment request of {amount} {receiver_currency} sent to {sender.email}")
+                return redirect('dashboard')
+            except Exception as e:
+                messages.error(request, f"Error creating payment request: {str(e)}")
+                return redirect('request_payment')
     else:
         form = RequestPaymentForm(user=request.user)
 
-    return render(request, 'payapp/request_payment.html', {'form': form})
+    return render(request, 'payapp/request_payment.html', {'form': form, 'notification_count': notification_count
+                                                           })
 
 
 @login_required
@@ -242,6 +299,13 @@ def respond_to_request_view(request, request_id):
     """
     View for responding to payment requests
     """
+    # Calculate notification count at the beginning of the function
+    notification_count = Transaction.objects.filter(
+        sender=request.user,
+        transaction_type='REQUEST',
+        status='PENDING'
+    ).count()
+
     # Get the payment request
     payment_request = get_object_or_404(
         Transaction,
@@ -271,22 +335,25 @@ def respond_to_request_view(request, request_id):
                     timestamp = datetime.datetime.now()
 
                 # Process the payment with atomic operation
-                with transaction.atomic():
-                    # Update sender's balance
-                    request.user.profile.balance -= payment_request.amount_sender_currency
-                    request.user.profile.save()
+                try:
+                    with db_transaction.atomic():
+                        # Update sender's balance
+                        request.user.profile.balance -= payment_request.amount_sender_currency
+                        request.user.profile.save()
 
-                    # Update receiver's balance
-                    payment_request.receiver.profile.balance += payment_request.amount_receiver_currency
-                    payment_request.receiver.profile.save()
+                        # Update receiver's balance
+                        payment_request.receiver.profile.balance += payment_request.amount_receiver_currency
+                        payment_request.receiver.profile.save()
 
-                    # Update the payment request
-                    payment_request.status = 'COMPLETED'
-                    payment_request.timestamp = timestamp
-                    payment_request.save()
+                        # Update the payment request
+                        payment_request.status = 'COMPLETED'
+                        payment_request.timestamp = timestamp
+                        payment_request.save()
 
-                    messages.success(request,
-                                     f"Payment of {payment_request.amount_sender_currency} {payment_request.sender_currency} completed successfully.")
+                        messages.success(request,
+                                         f"Payment of {payment_request.amount_sender_currency} {payment_request.sender_currency} completed successfully.")
+                except Exception as e:
+                    messages.error(request, f"Error processing payment: {str(e)}")
             else:
                 # Reject the payment request
                 payment_request.status = 'REJECTED'
@@ -299,7 +366,8 @@ def respond_to_request_view(request, request_id):
 
     return render(request, 'payapp/respond_request.html', {
         'form': form,
-        'payment_request': payment_request
+        'payment_request': payment_request,
+        'notification_count': notification_count
     })
 
 

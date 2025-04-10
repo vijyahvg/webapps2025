@@ -76,16 +76,15 @@
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'request_payment' %}">Request Money</a>
                             </li>
+
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'notifications' %}">
-                                    Notifications
-                                    {% with pending_count=request.user.sent_transactions.filter.count %}
-                                        {% if pending_count > 0 %}
-                                            <span class="badge bg-danger notification-badge">{{ pending_count }}</span>
-                                        {% endif %}
-                                    {% endwith %}
-                                </a>
-                            </li>
+    <a class="nav-link" href="{% url 'notifications' %}">
+        Notifications
+        {% if notification_count > 0 %}
+            <span class="badge bg-danger notification-badge">{{ notification_count }}</span>
+        {% endif %}
+    </a>
+</li>
                         {% endif %}
                     </ul>
 
