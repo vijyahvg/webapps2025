@@ -49,13 +49,13 @@
             field.parentNode.insertBefore(container, field);
             container.appendChild(field);
 
-            // Create and add eye icon
+            // Createing eye icon
             const eyeIcon = document.createElement('i');
             eyeIcon.className = 'fas fa-eye-slash password-toggle';
             eyeIcon.title = 'Show password';
             container.appendChild(eyeIcon);
 
-            // Add toggle functionality
+            // Adding toggle functionality
             eyeIcon.addEventListener('click', function() {
                 if (field.type === 'password') {
                     field.type = 'text';

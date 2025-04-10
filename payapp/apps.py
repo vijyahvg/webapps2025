@@ -1,3 +1,4 @@
+#apps.py for payapp directory
 from django.apps import AppConfig
 
 

@@ -20,12 +20,12 @@ def register_view(request):
         if form.is_valid():
             with transaction.atomic():
                 user = form.save()
-                # Set initial balance based on currency
+                # Setting initial balance based on currency
                 currency = form.cleaned_data.get('currency')
 
-                # Convert initial balance to the user's currency
+                # Converting initial balance to the user's currency
                 if currency != 'GBP':
-                    # Make request to the conversion API
+                    # Making request to the conversion API
                     try:
                         response = requests.get(
                             f'http://localhost:8000/webapps2025/conversion/GBP/{currency}/{settings.INITIAL_BALANCE_GBP}'
@@ -85,7 +85,7 @@ def dashboard_view(request):
     """
     User dashboard view
     """
-    # Check if user is admin and redirect to admin dashboard
+    #if user is admin and redirect to admin dashboard
     if request.user.profile.is_admin:
         return redirect('admin_dashboard')
 
@@ -104,7 +104,7 @@ def admin_dashboard_view(request):
     # Get all users and their profiles
     user_profiles = UserProfile.objects.all()
 
-    # Count admins and regular users correctly
+    # Counting admins and regular users correctly
     total_users = user_profiles.count()
     admin_users = user_profiles.filter(is_admin=True).count()
     regular_users = user_profiles.filter(is_admin=False).count()

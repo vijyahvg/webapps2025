@@ -20,7 +20,7 @@ from register.models import UserProfile
 # Import Thrift client for timestamp service
 from thrift_client import get_timestamp
 
-# Exchange rates (hardcoded as per requirements)
+# Exchange rates
 EXCHANGE_RATES = {
     'GBP': {'GBP': 1.0, 'USD': 1.25, 'EUR': 1.15},
     'USD': {'GBP': 0.8, 'USD': 1.0, 'EUR': 0.92},
@@ -40,7 +40,7 @@ def dashboard_view(request):
     # Get user's profile and transaction counts
     profile = request.user.profile
 
-    # Get pending payment requests where the user is the sender (ones they need to respond to)
+    # Get pendng payment requests where the user is the sender
     pending_requests = Transaction.objects.filter(
         sender=request.user,
         transaction_type='REQUEST',
@@ -71,7 +71,7 @@ def transaction_list_view(request):
     sent_transactions = Transaction.objects.filter(sender=request.user)
     received_transactions = Transaction.objects.filter(receiver=request.user)
 
-    # Combine and sort by timestamp
+    # Combined and sorted by timestamp
     all_transactions = sorted(
         list(sent_transactions) + list(received_transactions),
         key=lambda x: x.timestamp,
@@ -88,7 +88,7 @@ def transaction_list_view(request):
     # Return the rendered template with transaction and notification data
     return render(request, 'payapp/transactions.html', {
         'transactions': all_transactions,
-        'notification_count': notification_count  # Add this line
+        'notification_count': notification_count
     })
 
 
@@ -104,7 +104,6 @@ def admin_transaction_list_view(request):
     # Get all transactions
     all_transactions = Transaction.objects.all().order_by('-timestamp')
 
-    # Add this to each view before the render statement
     notification_count = Transaction.objects.filter(
         sender=request.user,
         transaction_type='REQUEST',
@@ -128,7 +127,7 @@ def notification_view(request):
         status='PENDING'
     ).order_by('-timestamp')
 
-    # Add this to each view before the render statement
+
     notification_count = Transaction.objects.filter(
         sender=request.user,
         transaction_type='REQUEST',
@@ -144,7 +143,7 @@ def make_payment_view(request):
     """
     View for making a direct payment to another user
     """
-    # Calculate notification count at the beginning of the function
+    # Calculating the notification count in the beginning
     notification_count = Transaction.objects.filter(
         sender=request.user,
         transaction_type='REQUEST',
@@ -161,7 +160,7 @@ def make_payment_view(request):
             # Get recipient user
             recipient = User.objects.get(email=recipient_email)
 
-            # Check if user has enough balance
+            # Checking if user has enough balance
             if request.user.profile.balance < amount:
                 messages.error(request, "Insufficient balance for this transaction.")
                 return redirect('make_payment')
@@ -172,7 +171,7 @@ def make_payment_view(request):
 
             # Convert amount to recipient's currency
             if sender_currency != receiver_currency:
-                # Use the exchange rate from our dictionary
+                # Useing the exchange rate from the dictionary
                 exchange_rate = EXCHANGE_RATES[sender_currency][receiver_currency]
                 amount_receiver_currency = amount * decimal.Decimal(exchange_rate)
             else:
@@ -231,7 +230,7 @@ def request_payment_view(request):
     """
     View for requesting payment from another user
     """
-    # Calculate notification count at the beginning of the function
+    # Calculate notification count at the beginning
     notification_count = Transaction.objects.filter(
         sender=request.user,
         transaction_type='REQUEST',
@@ -299,7 +298,7 @@ def respond_to_request_view(request, request_id):
     """
     View for responding to payment requests
     """
-    # Calculate notification count at the beginning of the function
+    # Calculate notification count at the beginning
     notification_count = Transaction.objects.filter(
         sender=request.user,
         transaction_type='REQUEST',
@@ -334,7 +333,6 @@ def respond_to_request_view(request, request_id):
                     # Fallback to current time if Thrift service is unavailable
                     timestamp = datetime.datetime.now()
 
-                # Process the payment with atomic operation
                 try:
                     with db_transaction.atomic():
                         # Update sender's balance

@@ -18,7 +18,7 @@ def get_timestamp():
         # client = TimestampService.Client(protocol)
         # timestamp = client.getTimestamp()
 
-        # For now, just return the current time
+        # For now, just returning the current time
         return datetime.datetime.now()
     except Exception as e:
         print(f"Error getting timestamp from Thrift service: {e}")

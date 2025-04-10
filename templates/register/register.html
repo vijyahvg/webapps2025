@@ -43,13 +43,13 @@
         const passwordFields = document.querySelectorAll('input[type="password"]');
 
         passwordFields.forEach(field => {
-            // Create container for relative positioning
+            // Creating container for relative positioning
             const container = document.createElement('div');
             container.className = 'password-container';
             field.parentNode.insertBefore(container, field);
             container.appendChild(field);
 
-            // Create and add eye icon
+            // Create eye icon
             const eyeIcon = document.createElement('i');
             eyeIcon.className = 'fas fa-eye-slash password-toggle';
             eyeIcon.title = 'Show password';

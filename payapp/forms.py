@@ -6,7 +6,7 @@ from .models import Transaction
 
 class PaymentForm(forms.Form):
     """
-    Form for making direct payments to other users
+    creating Form for making payments directly to other users in the app/website
     """
     recipient_email = forms.EmailField(
         label='Recipient Email',
@@ -50,7 +50,7 @@ class PaymentForm(forms.Form):
 
 class RequestPaymentForm(forms.Form):
     """
-    Form for requesting payment from other users
+    creating Form for requesting payment from other users
     """
     sender_email = forms.EmailField(
         label='Requestee Email',
@@ -75,13 +75,13 @@ class RequestPaymentForm(forms.Form):
     def clean_sender_email(self):
         email = self.cleaned_data.get('sender_email')
 
-        # Check if the sender exists
+        # to  Check if the sender exists or not
         try:
             User.objects.get(email=email)
         except User.DoesNotExist:
             raise ValidationError("No user with this email address exists.")
 
-        # Make sure the user isn't requesting money from themselves
+        # Makeing sure the user isn't requesting money from themselves is yes then error message shows up
         if self.user and self.user.email == email:
             raise ValidationError("You cannot request money from yourself.")
 
@@ -94,7 +94,7 @@ class RequestPaymentForm(forms.Form):
 
 class RespondRequestForm(forms.Form):
     """
-    Form for responding to payment requests
+    creating Form for responding to payment requests
     """
     RESPONSE_CHOICES = (
         ('ACCEPT', 'Accept and Pay'),

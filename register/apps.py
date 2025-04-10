@@ -5,10 +5,10 @@ class RegisterConfig(AppConfig):
     name = 'register'
 
     def ready(self):
-        # Import but don't call create_initial_admin here
-        # We'll handle this separately after migrations
+        # Importing but won't get called create_initial_admin here
+        # will be handled this  after migrations
         import os
-        # Only run when the server is run directly (not during migrations)
+        # Only run when the server is run directly
         if os.environ.get('RUN_MAIN', None) == 'true':
             # This conditional prevents the code from running during migrations
             pass
